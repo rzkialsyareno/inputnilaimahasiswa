@@ -1,5 +1,21 @@
+// Import Firebase modules
+import {
+  db,
+  collection,
+  addDoc,
+  getDocs,
+  serverTimestamp,
+} from "./firebase-config.js";
+
 /**
+ * FUNGSI 1: VALIDASI INPUT
  * Fungsi untuk validasi input form
+ *
+ * Proses validasi:
+ * - Memeriksa apakah semua field terisi
+ * - Memvalidasi format NIM (harus angka minimal 8 digit)
+ * - Memvalidasi range nilai (0-100)
+ *
  * @returns {Object} { isValid: boolean, data: object, message: string }
  */
 function validasiInput() {
@@ -38,7 +54,7 @@ function validasiInput() {
     };
   }
 
-  // Jika semua validasi lolos
+  // Jika semua validasi lolos, return data yang valid
   return {
     isValid: true,
     data: {
@@ -53,192 +69,78 @@ function validasiInput() {
 }
 
 /**
- * Fungsi untuk menyimpan data ke database (sementara ke localStorage)
- * @param {Object} data - Data yang akan disimpan
- * @returns {Promise<boolean>} - Status keberhasilan penyimpanan
+ * FUNGSI 2: SIMPAN DATA
+ * Fungsi untuk menyimpan data ke Firebase Firestore
+ *
+ * Proses:
+ * - Menerima data yang sudah tervalidasi
+ * - Menyimpan ke collection "nilaimahasiswa" di Firestore
+ * - Menambahkan timestamp otomatis dari server
+ *
+ * @param {Object} data - Data yang akan disimpan (hasil dari validasiInput)
+ * @returns {Promise<boolean>} - Status keberhasilan penyimpanan (true/false)
  */
 async function simpanData(data) {
   try {
-    // Simulasi delay untuk async operation
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Simpan ke Firebase Firestore collection "nilaimahasiswa"
+    const docRef = await addDoc(collection(db, "nilaimahasiswa"), {
+      nim: data.nim,
+      nama: data.namaLengkap,
+      mataKuliah: data.mataKuliah,
+      nilai: data.nilai,
+      timestamp: serverTimestamp(), // Timestamp otomatis dari server Firebase
+    });
 
-    // Ambil data existing dari localStorage
-    let dataNilai = JSON.parse(localStorage.getItem("dataNilai")) || [];
-
-    // Tambahkan data baru
-    dataNilai.push(data);
-
-    // Simpan kembali ke localStorage
-    localStorage.setItem("dataNilai", JSON.stringify(dataNilai));
-
-    return true;
+    console.log("✅ Data berhasil disimpan dengan ID:", docRef.id);
+    return true; // Return true jika berhasil
   } catch (error) {
-    console.error("Error saat menyimpan data:", error);
-    return false;
+    console.error("❌ Error saat menyimpan data ke Firebase:", error);
+    return false; // Return false jika gagal
   }
 }
 
 /**
- * Fungsi untuk mengambil dan menampilkan data dari database
- * @returns {Promise<Array>} - Array berisi data nilai
+ * FUNGSI 3: LOAD DATA
+ * Fungsi untuk mengambil dan menampilkan data dari Firebase Firestore
+ *
+ * Proses:
+ * - Mengambil semua dokumen dari collection "nilaimahasiswa"
+ * - Mengkonversi data Firestore menjadi array JavaScript
+ * - Mengembalikan array data untuk ditampilkan di UI
+ *
+ * @returns {Promise<Array>} - Array berisi data nilai mahasiswa
  */
 async function loadData() {
   try {
-    // Simulasi delay untuk async operation
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Ambil data dari Firebase Firestore collection "nilaimahasiswa"
+    const querySnapshot = await getDocs(collection(db, "nilaimahasiswa"));
 
-    // Ambil data dari localStorage
-    const dataNilai = JSON.parse(localStorage.getItem("dataNilai")) || [];
+    const dataNilai = [];
 
-    return dataNilai;
-  } catch (error) {
-    console.error("Error saat memuat data:", error);
-    return [];
-  }
-}
-
-/**
- * Fungsi untuk menampilkan alert/notifikasi
- * @param {string} message - Pesan yang akan ditampilkan
- * @param {string} type - Tipe alert (success, danger, warning, info)
- */
-function tampilkanAlert(message, type = "info") {
-  const alertContainer = document.getElementById("alertContainer");
-
-  // Icon untuk setiap tipe alert
-  const icons = {
-    success: '<i class="bi bi-check-circle-fill"></i>',
-    danger: '<i class="bi bi-exclamation-circle-fill"></i>',
-    warning: '<i class="bi bi-exclamation-triangle-fill"></i>',
-    info: '<i class="bi bi-info-circle-fill"></i>',
-  };
-
-  const titles = {
-    success: "Berhasil!",
-    danger: "Error!",
-    warning: "Peringatan!",
-    info: "Info:",
-  };
-
-  const alertHTML = `
-        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-            ${icons[type]} <strong>${titles[type]}</strong> ${message}
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    `;
-
-  alertContainer.innerHTML = alertHTML;
-
-  // Auto hide alert setelah 5 detik
-  setTimeout(() => {
-    const alert = alertContainer.querySelector(".alert");
-    if (alert) {
-      alert.classList.remove("show");
-      setTimeout(() => {
-        alertContainer.innerHTML = "";
-      }, 300);
-    }
-  }, 5000);
-}
-
-/**
- * Fungsi untuk me-render data ke tabel
- * @param {Array} data - Array data nilai yang akan ditampilkan
- */
-function renderTabel(data) {
-  const tabelBody = document.getElementById("tabelNilai");
-
-  if (!tabelBody) return;
-
-  if (data.length === 0) {
-    tabelBody.innerHTML = `
-            <tr>
-                <td colspan="5" class="text-center text-muted">
-                    Belum ada data nilai mahasiswa
-                </td>
-            </tr>
-        `;
-    return;
-  }
-
-  let html = "";
-  data.forEach((item, index) => {
-    // Ambil nama mata kuliah dari kode
-    const namaMK = item.mataKuliah.split(" - ")[1] || item.mataKuliah;
-
-    html += `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${item.namaLengkap}</td>
-                <td>${item.nim}</td>
-                <td>${namaMK}</td>
-                <td><span class="badge bg-primary">${item.nilai}</span></td>
-            </tr>
-        `;
-  });
-
-  tabelBody.innerHTML = html;
-}
-
-/**
- * Fungsi untuk reset form
- */
-function resetForm() {
-  document.getElementById("formInputNilai").reset();
-}
-
-// Event Listener untuk Form Submit (hanya di halaman index.html)
-document.addEventListener("DOMContentLoaded", function () {
-  const form = document.getElementById("formInputNilai");
-
-  if (form) {
-    form.addEventListener("submit", async function (e) {
-      e.preventDefault();
-
-      // 1. Validasi input
-      const validasi = validasiInput();
-
-      if (!validasi.isValid) {
-        tampilkanAlert(validasi.message, "danger");
-        return;
-      }
-
-      // 2. Simpan data
-      const berhasil = await simpanData(validasi.data);
-
-      if (berhasil) {
-        tampilkanAlert("Data nilai berhasil disimpan!", "success");
-        resetForm();
-      } else {
-        tampilkanAlert("Gagal menyimpan data. Silakan coba lagi.", "danger");
-      }
-    });
-  }
-
-  // Load data untuk halaman lihat-data.html
-  const tabelNilai = document.getElementById("tabelNilai");
-
-  if (tabelNilai) {
-    loadData()
-      .then((data) => {
-        renderTabel(data);
-
-        // Tampilkan alert sukses jika ada data
-        if (data.length > 0) {
-          tampilkanAlert(
-            `Berhasil memuat ${data.length} data nilai mahasiswa`,
-            "success"
-          );
-        } else {
-          tampilkanAlert(
-            "Belum ada data nilai. Silakan tambahkan data terlebih dahulu.",
-            "info"
-          );
-        }
-      })
-      .catch((error) => {
-        tampilkanAlert("Gagal memuat data. Silakan refresh halaman.", "danger");
-        console.error("Error loading data:", error);
+    // Loop setiap dokumen dan tambahkan ke array
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      dataNilai.push({
+        id: doc.id, // Document ID dari Firestore
+        namaLengkap: data.nama,
+        nim: data.nim,
+        mataKuliah: data.mataKuliah,
+        nilai: data.nilai,
+        timestamp: data.timestamp,
       });
+    });
+
+    console.log(
+      "✅ Data berhasil dimuat dari Firebase:",
+      dataNilai.length,
+      "dokumen"
+    );
+    return dataNilai; // Return array data
+  } catch (error) {
+    console.error("❌ Error saat memuat data dari Firebase:", error);
+    return []; // Return array kosong jika gagal
   }
-});
+}
+
+// Export fungsi-fungsi utama untuk digunakan di file lain
+export { validasiInput, simpanData, loadData };
