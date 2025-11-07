@@ -251,13 +251,19 @@ header .nav-link i {
 
 /* ========== Table Styles ========== */
 .table-responsive {
-  border-radius: 12px;
-  overflow: hidden;
+  border-radius: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   box-shadow: var(--shadow-sm);
+  background: #fff;
 }
 
 .table {
+  width: 100%;
   margin-bottom: 0;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .table thead {
@@ -273,25 +279,24 @@ header .nav-link i {
   border: none;
   padding: 1rem;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .table tbody td {
+  border: none;
   padding: 1rem;
   vertical-align: middle;
-  border-bottom: 1px solid #e9ecef;
+  background-color: #f7f7f7;
+  white-space: nowrap;
 }
 
-.table-striped tbody tr:nth-of-type(odd) {
-  background-color: rgba(59, 130, 246, 0.03);
+.table-striped tbody tr:nth-of-type(odd) td {
+  background-color: #f2f2f2;
 }
 
-.table-hover tbody tr {
-  transition: all 0.3s ease;
-}
-
-.table-hover tbody tr:hover {
-  background-color: rgba(59, 130, 246, 0.08);
-  transform: scale(1.01);
+.table-hover tbody tr:hover td {
+  background-color: #eaeaea;
+  transform: scale(1.005);
   box-shadow: var(--shadow-sm);
 }
 
@@ -300,6 +305,12 @@ header .nav-link i {
   font-size: 1rem;
   font-weight: 700;
   border-radius: 20px;
+}
+
+@media (max-width: 768px) {
+  .table-responsive .table {
+    min-width: 720px;
+  }
 }
 
 /* ========== Alert Styles ========== */
